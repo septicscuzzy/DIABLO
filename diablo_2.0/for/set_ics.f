@@ -7,6 +7,7 @@ C----*|--.---------.---------.---------.---------.---------.---------.-|-------|
       INTEGER I,J,K,N
       REAL*8 RNUM1,RNUM2,RNUM3
       INTEGER, DIMENSION(:), ALLOCATABLE :: seed
+      REAL*8 LP, LYC, LYP, U0
 
 C Initialize the random number generator
       CALL RANDOM_SEED(SIZE = K)
@@ -71,6 +72,27 @@ C Tanh shear layer
            END DO
          END DO
        END DO
+      else if (IC_TYPE.eq.4) then
+! Plume
+      LP=0.005d0
+      LYC=0.05d0
+      LYP=0.004d0
+      U0=0.0637d0
+       DO J=0,NY+1
+         DO K=0,NZP-1
+           DO I=0,NXM
+             U1(I,K,J)=0.d0
+!             U2(I,K,J)=U0*EXP((-(GX(I)-LX/2.d0)**2.d0
+!     &                -(GZ(RANKZ*NZP+K)-LZ/2.d0)**2.d0)/LP**2.d0)
+!     &               *(1.d0-tanh((GY(J)-LYC)/LYP))/2.d0
+             U2(I,K,J)=U0*
+     &              MAX(0.0,(1.d0-((GX(I)-LX/2.d0)**2.d0
+     &                    +(GZ(RANKZ*NZP+K)-LZ/2.d0)**2.d0)/(LP**2.d0)))
+     &               *(1.d0-tanh((GY(J)-LYC)/LYP))/2.d0
+             U3(I,K,J)=0.d0
+            END DO
+          END DO
+        END DO
       else
         WRITE(*,*) 'WARNING, unsupported IC_TYPE in CREATE_FLOW'
       end if
@@ -194,6 +216,7 @@ C particular problem of interest
 
       INCLUDE 'header'
       INTEGER I,J,K,N
+      REAL*8 LP, LYC, LYP, TH0
 
       DO N=1,N_TH
         IF (CREATE_NEW_TH(N)) THEN
@@ -243,6 +266,24 @@ C particular problem of interest
            END DO
          END DO
        END DO
+        ELSE IF (IC_TYPE.eq.4) then
+! plume
+      LP=0.005d0
+      LYC=0.05d0
+      LYP=0.004d0
+      TH0=-2.44650d0
+
+       DO K=0,NZP-1
+         DO I=0,NXM
+           DO J=1,NY
+             TH(I,K,J,N)=TH0*
+     &            (1.d0-(tanh((sqrt((GX(I)-LX/2.d0)**2.d0
+     &             +(GZ(RANKZ*NZP+K)-LZ/2.d0)**2.d0)
+     &             -LP)/0.001d0)+1.d0)/2.d0)
+     &               *(1.d0-tanh((GY(J)-LYC)/LYP))/2.d0
+           END DO
+         END DO
+        END DO
        ELSE
         WRITE(*,*) 'WARNING, unsupported IC_TYPE in CREATE_FLOW'
         END IF

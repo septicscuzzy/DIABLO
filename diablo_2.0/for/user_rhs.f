@@ -11,6 +11,73 @@
 
        real*8 alpha
 
+! for plume test (sponge_vel)
+      REAL*8 LP, LYC, LYP, U0, TH0, tau_sponge, RNUM1
+
+! For experimental validation
+      LP=0.005d0
+      LYC=0.05d0
+      LYP=0.004d0
+      U0=0.0637d0
+      TH0=-2.44650d0
+      tau_sponge=0.01d0
+
+
+! Create the damping function
+      DO J=2,NY
+        DO K=0,NZP-1
+          DO I=0,NXM
+           CALL RANDOM_NUMBER(RNUM1)
+            S1(I,K,J)=(U2(I,K,J)-U0*
+     &              MAX(0.0,(1.d0-((GX(I)-LX/2.d0)**2.d0
+     &                    +(GZ(RANKZ*NZP+K)-LZ/2.d0)**2.d0)/(LP**2.d0)))
+     &                 *(1.d0+0.4d0*(RNUM1-0.5d0)))
+     &               *(1.d0-tanh((GY(J)-LYC)/LYP))/2.d0
+          END DO
+        END DO
+      END DO
+
+      CALL FFT_XZ_TO_FOURIER(S1,CS1,0,NY+1)
+
+      DO J=2,NY
+        DO K=0,TNKZ
+          DO I=0,NXP-1
+            CF2(I,K,J)=CF2(I,K,J) - CS1(I,K,J)/tau_sponge
+          END DO
+        END DO
+      END DO
+
+!      IF (RANK.eq.0) THEN
+!        write(*,*), 'JSTART,JEND: ',JSTART_TH(N),JEND_TH(N)
+!      END IF
+
+! Create the damping function
+      DO N=1,N_TH
+      DO J=JSTART_TH(N),JEND_TH(N)
+        DO K=0,NZP-1
+          DO I=0,NXM
+
+              S1(I,K,J)=(TH(I,K,J,N)-TH0*
+     &      (1.d0 -(tanh((sqrt((GX(I)-LX/2.d0)**2.d0
+     &                        +(GZ(RANKZ*NZP+K)-LZ/2.d0)**2.d0)
+     &             -LP)/0.001d0)+1.d0)/2.d0))
+     &               *(1.d0-tanh((GY(J)-LYC)/LYP))/2.d0
+
+          END DO
+        END DO
+      END DO
+
+      CALL FFT_XZ_TO_FOURIER(S1,CS1,0,NY+1)
+
+      DO J=JSTART_TH(N),JEND_TH(N)
+        DO K=0,TNKZ
+          DO I=0,NXP-1
+            CFTH(I,K,J,N)=CFTH(I,K,J,N) - CS1(I,K,J)/tau_sponge
+          END DO
+        END DO
+      END DO
+      END DO
+
 ! For example, to add a linear damping term (e.g. -alpha*U) to the RHS:
 !       alpha=-0.1d0
 !       DO J=JSTART,JEND
